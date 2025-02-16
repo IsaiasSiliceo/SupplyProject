@@ -22,10 +22,9 @@ if (length(script_path) == 0) {
   }
 }
 
-SYNTAXDIR <- dirname(script_path)  
+SYNTAXDIR <- dirname(script_path)
 PATH <- dirname(SYNTAXDIR)  
-DATADIR <- file.path(PATH, "data")  
-
+DATADIR <-paste0(PATH, "/data/") 
 setwd(PATH)
 
 # --- 3. INSTALACIÓN Y CARGA DE LIBRERÍAS -------------------------------------
@@ -44,10 +43,11 @@ ipak(packages)
 
 # --- 4. DEFINICIÓN DE  VARIABLES GLOBALES ------------------------------
 
-fecha_inicio <- "2022-01-10"
-fecha_fin <- "2022-02-10" 
+fecha_inicio <- "2023-02-20" # Iniciamos en lunes
+fecha_fin <- "2024-02-18"    # Terminamos en domingo
 
 # --- 5. DEFINICIÓN DE FUNCIONES --------------------------------------------
+
 # Filtrar por rango de fechas
 filtrar_por_fecha <- function(data, fecha_inicio, fecha_fin) {
   return(data[Fecha >= as.IDate(fecha_inicio) & Fecha <= as.IDate(fecha_fin)])
@@ -100,14 +100,14 @@ procesar_abastos <- function(fecha_inicio, fecha_fin) {
   
   cat("\n🔄 Cargando datos...\n")
   Data_Base_Abastos <- fread(paste0(DATADIR, "00_Datos_Modelar.txt"), 
-                             sep = "|", nrows = 1000)
+                             sep = "|")
   
-  cat("\n🔄 Transformando datos a formato ancho...\n")
-  Data_Base_Abastos_Ancho <- transformar_data_completa(Data_Base_Abastos, 
+  cat("\n🔄 Transformando fechas de filas a columnas...\n")
+  Data_Base_Abastos_Cols <- transformar_data_completa(Data_Base_Abastos, 
                                                        fecha_inicio, fecha_fin)
   
   cat("\n🔄 Agrupando datos en semanas...\n")
-  Data_Base_Abastos_Semanal <- agrupar_a_semanas(Data_Base_Abastos_Ancho)
+  Data_Base_Abastos_Semanal <- agrupar_a_semanas(Data_Base_Abastos_Cols)
   
   # Guardar archivo en DATADIR
   output_file <- paste0(DATADIR, "Data_Base_Abastos_Semanal.csv")
