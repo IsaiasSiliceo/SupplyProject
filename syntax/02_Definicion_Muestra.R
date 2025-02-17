@@ -1,4 +1,12 @@
-
+# ------------------------------------------------------------------------------
+# [CIMAT CONSULTORIA]  02_Definicion_Muestra.R
+# 
+# Autora      : Semiramis G. de la Cruz
+# Revision    : 16.02.2025
+# Descripcion : Se define la muestra de trabajo del proyecto de abastos, tomando
+#               la muestra desde el lunes 2023-02-20 hasta el final.
+#               
+# ------------------------------------------------------------------------------
 
 # --- 1. LIMPIEZA DEL ENTORNO ------------------------------------------------
 
@@ -41,12 +49,7 @@ packages <- c("Hmisc", "lubridate", "dplyr", "tidyverse", "janitor",
 ipak(packages)
 
 
-# --- 4. DEFINICIÓN DE  VARIABLES GLOBALES ------------------------------
-
-fecha_inicio <- "2023-02-20" # Iniciamos en lunes
-fecha_fin <- "2024-02-18"    # Terminamos en domingo
-
-# --- 5. DEFINICIÓN DE FUNCIONES --------------------------------------------
+# --- 4. DEFINICIÓN DE FUNCIONES --------------------------------------------
 
 # Filtrar por rango de fechas
 filtrar_por_fecha <- function(data, fecha_inicio, fecha_fin) {
@@ -58,14 +61,16 @@ transformar_data_completa <- function(data, fecha_inicio, fecha_fin) {
   data_filtrada <- filtrar_por_fecha(data, fecha_inicio, fecha_fin)
   todas_fechas <- seq(as.IDate(fecha_inicio), as.IDate(fecha_fin), by = "day")
   
-  data_wide <- dcast(data_filtrada, Loc + Sku ~ Fecha, value.var = "Uni", fun.aggregate = sum, fill = 0)
+  data_wide <- dcast(data_filtrada, Loc + Sku ~ Fecha, value.var = "Uni",
+                     fun.aggregate = sum, fill = 0)
   
   # Verificar fechas faltantes
   fechas_presentes <- setdiff(names(data_wide), c("Loc", "Sku"))
   fechas_faltantes <- setdiff(as.character(todas_fechas), fechas_presentes)
   
   if (length(fechas_faltantes) > 0) {
-    cat("⚠️ Faltan las siguientes fechas en la base transformada:\n", fechas_faltantes, "\n")
+    cat("⚠️ Faltan las siguientes fechas en la base transformada:\n", 
+        fechas_faltantes, "\n")
     
     for (fecha in fechas_faltantes) {
       data_wide[[fecha]] <- 0
@@ -95,7 +100,7 @@ agrupar_a_semanas <- function(data) {
 
 # --- 5. FUNCIÓN PRINCIPAL --------------------------------------------------
 
-procesar_abastos <- function(fecha_inicio, fecha_fin) {
+procesar_abastos <- function() {
   cat("\n📌 Procesando datos de abastos...\n")
   
   start_total <- Sys.time()
@@ -105,36 +110,71 @@ procesar_abastos <- function(fecha_inicio, fecha_fin) {
   start <- Sys.time()
   Data_Base_Abastos <- fread(paste0(DATADIR, "00_Datos_Modelar.txt"), sep = "|")
   end <- Sys.time()
-  cat("⏱ Tiempo de carga:", round(difftime(end, start, units = "secs"), 2), "segundos\n")
+  cat("⏱ Tiempo de carga:", 
+      round(difftime(end, start, units = "secs"), 2), "segundos\n")
   
-  # Transformación de fechas
-  cat("\n🔄 Transformando fechas de filas a columnas...\n")
-  start <- Sys.time()
-  Data_Base_Abastos_Cols <- transformar_data_completa(Data_Base_Abastos, fecha_inicio, fecha_fin)
-  end <- Sys.time()
-  cat("⏱ Tiempo de transformación:", round(difftime(end, start, units = "secs"), 2), "segundos\n")
+  # Fechas para Train y Test
+  fecha_train_inicio <- "2023-02-20"
+  fecha_train_fin <- "2024-02-18"
+  fecha_test_inicio <- "2024-02-19"
+  fecha_test_fin <- "2024-05-12"
   
-  # Agrupación en semanas
-  cat("\n🔄 Agrupando datos en semanas...\n")
+  # Transformación de fechas para Train
+  cat("\n🔄 Transformando datos para Train...\n")
   start <- Sys.time()
-  Data_Base_Abastos_Semanal <- agrupar_a_semanas(Data_Base_Abastos_Cols)
+  Data_Base_Train_Cols <- transformar_data_completa(Data_Base_Abastos, 
+                                                    fecha_train_inicio, 
+                                                    fecha_train_fin)
   end <- Sys.time()
-  cat("⏱ Tiempo de agrupación:", round(difftime(end, start, units = "secs"), 2), "segundos\n")
+  cat("⏱ Tiempo de transformación (Train):", 
+      round(difftime(end, start, units = "secs"), 2), "segundos\n")
   
-  # Guardado del archivo
-  cat("\n💾 Guardando archivo...\n")
+  # Transformación de fechas para Test
+  cat("\n🔄 Transformando datos para Test...\n")
   start <- Sys.time()
-  output_file <- paste0(DATADIR, "Data_Base_Abastos_Semanal.csv")
-  fwrite(Data_Base_Abastos_Semanal, output_file)
+  Data_Base_Test_Cols <- transformar_data_completa(Data_Base_Abastos, 
+                                                   fecha_test_inicio, 
+                                                   fecha_test_fin)
   end <- Sys.time()
-  cat("⏱ Tiempo de guardado:", round(difftime(end, start, units = "secs"), 2), "segundos\n")
+  cat("⏱ Tiempo de transformación (Test):", 
+      round(difftime(end, start, units = "secs"), 2), "segundos\n")
+  
+  # Agrupación en semanas para Train
+  cat("\n🔄 Agrupando datos en semanas para Train...\n")
+  start <- Sys.time()
+  Data_Base_Train_Semanal <- agrupar_a_semanas(Data_Base_Train_Cols)
+  end <- Sys.time()
+  cat("⏱ Tiempo de agrupación (Train):", 
+      round(difftime(end, start, units = "secs"), 2), "segundos\n")
+  
+  # Agrupación en semanas para Test
+  cat("\n🔄 Agrupando datos en semanas para Test...\n")
+  start <- Sys.time()
+  Data_Base_Test_Semanal <- agrupar_a_semanas(Data_Base_Test_Cols)
+  end <- Sys.time()
+  cat("⏱ Tiempo de agrupación (Test):", 
+      round(difftime(end, start, units = "secs"), 2), "segundos\n")
+  
+  # Guardado de archivos
+  cat("\n💾 Guardando archivos Train y Test...\n")
+  start <- Sys.time()
+  output_train <- paste0(DATADIR, "Data_Base_Abastos_Train.csv")
+  output_test <- paste0(DATADIR, "Data_Base_Abastos_Test.csv")
+  fwrite(Data_Base_Train_Semanal, output_train)
+  fwrite(Data_Base_Test_Semanal, output_test)
+  end <- Sys.time()
+  cat("⏱ Tiempo de guardado:", 
+      round(difftime(end, start, units = "secs"), 2), "segundos\n")
   
   total_end <- Sys.time()
-  cat("\n✅ Procesamiento finalizado en", round(difftime(total_end, start_total, units = "secs"), 2), "segundos. Archivo guardado en:", output_file, "\n")
+  cat("\n✅ Procesamiento finalizado en", 
+      round(difftime(total_end, start_total, units = "secs"), 2), "segundos.\n")
+  cat("📂 Archivos guardados en:\n- Train:", output_train, "\n- Test:", 
+      output_test, "\n")
   
-  return(Data_Base_Abastos_Semanal)
+  return(list(Train = Data_Base_Train_Semanal, Test = Data_Base_Test_Semanal))
 }
 
-Data_Base_Abastos_Semanal <- procesar_abastos(fecha_inicio, fecha_fin)
+Data_Base_Abastos <- procesar_abastos()
 
 
